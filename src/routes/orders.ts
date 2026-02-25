@@ -70,16 +70,27 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     const { orderId } = req.params;
     const { status } = req.body;
     
-    const order = await Order.findOneAndUpdate(
-      { orderId },
-      { status },
-      { new: true }
-    );
+    const order = await Order.findOne({ orderId });
     
     if (!order) {
       res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
+
+    const previousStatus = order.status;
+    
+    if (status === 'cancelled' && previousStatus !== 'cancelled') {
+      for (const item of order.items) {
+        const product = await Product.findById(item.productId);
+        if (product && product.quantity !== undefined && product.quantity !== null) {
+          const newQty = product.quantity + item.qty;
+          await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: true });
+        }
+      }
+    }
+    
+    order.status = status;
+    await order.save();
     
     res.json({ success: true, order });
   } catch (error) {

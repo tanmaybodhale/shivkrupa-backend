@@ -3,13 +3,18 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
 import authRoutes from './routes/auth';
+import catalogRoutes from './routes/catalog';
+import ordersRoutes from './routes/orders';
 
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+}));
 app.use(express.json());
 
 app.get('/', (req: Request, res: Response) => {
@@ -17,6 +22,8 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/catalog', catalogRoutes);
+app.use('/api/orders', ordersRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: 'Route not found' });

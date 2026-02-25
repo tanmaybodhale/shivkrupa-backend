@@ -120,4 +120,37 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+router.post('/admin-login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      res.status(400).json({ success: false, message: 'Please provide username and password' });
+      return;
+    }
+
+    const shopkeeperUsername = process.env.SHOPKEEPER_USERNAME || 'admin';
+    const shopkeeperPassword = process.env.SHOPKEEPER_PASSWORD || 'admin123';
+
+    if (username === shopkeeperUsername && password === shopkeeperPassword) {
+      res.json({
+        success: true,
+        message: 'Admin login successful',
+        user: {
+          uid: 'SHOP001',
+          name: 'Admin',
+          phone: '9975636622',
+          role: 'shopkeeper',
+        },
+      });
+      return;
+    }
+
+    res.status(401).json({ success: false, message: 'Invalid admin credentials' });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ success: false, message: 'Server error during admin login' });
+  }
+});
+
 export default router;

@@ -5,24 +5,31 @@ const router = Router();
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, phone, email, password, role } = req.body;
+    const { name, phone, email, password, role, address } = req.body;
+    
+    console.log('Signup request received:', { name, phone, email, role, hasAddress: !!address });
+    console.log('Address data:', address);
 
     if (!name || !phone || !password) {
+      console.log('Missing required fields');
       res.status(400).json({ success: false, message: 'Please fill all required fields' });
       return;
     }
 
     if (!/^\d{10}$/.test(phone)) {
+      console.log('Invalid phone:', phone);
       res.status(400).json({ success: false, message: 'Enter a valid 10-digit phone number' });
       return;
     }
 
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
+      console.log('User already exists:', phone);
       res.status(400).json({ success: false, message: 'Phone already registered' });
       return;
     }
 
+    console.log('Creating new user...');
     const uid = 'SKE' + Date.now().toString().slice(-6);
     const userRole = role || 'customer';
 
@@ -34,9 +41,12 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       password,
       role: userRole,
       joinedAt: new Date(),
+      address: address || {},
     });
 
+    console.log('Saving user to database...');
     await newUser.save();
+    console.log('User saved successfully:', newUser.uid);
 
     res.status(201).json({
       success: true,
@@ -47,6 +57,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
         phone: newUser.phone,
         email: newUser.email,
         role: newUser.role,
+        address: newUser.address,
       },
     });
   } catch (error) {
@@ -112,6 +123,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         phone: user.phone,
         email: user.email,
         role: user.role,
+        address: user.address,
       },
     });
   } catch (error) {
@@ -150,6 +162,39 @@ router.post('/admin-login', async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ success: false, message: 'Server error during admin login' });
+  }
+});
+
+router.get('/users', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const users = await User.find({ role: 'customer' }).select('uid name phone address');
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.put('/address', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, address } = req.body;
+    if (!uid || !address) {
+      res.status(400).json({ success: false, message: 'User ID and address required' });
+      return;
+    }
+    const user = await User.findOneAndUpdate(
+      { uid },
+      { address },
+      { new: true }
+    );
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Update address error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

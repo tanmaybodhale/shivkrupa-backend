@@ -19,6 +19,17 @@ export interface IOrder extends Document {
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
   time: Date;
   timeStr: string;
+  deliveryAddress?: {
+    street: string;
+    area: string;
+    city: string;
+    state: string;
+    pincode: string;
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
 }
 
 const OrderSchema = new Schema<IOrder>(
@@ -41,6 +52,17 @@ const OrderSchema = new Schema<IOrder>(
     status: { type: String, enum: ['pending', 'confirmed', 'delivered', 'cancelled'], default: 'pending' },
     time: { type: Date, default: Date.now },
     timeStr: { type: String, required: true },
+    deliveryAddress: {
+      street: { type: String, default: '' },
+      area: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      pincode: { type: String, default: '' },
+      location: {
+        lat: { type: Number },
+        lng: { type: Number },
+      },
+    },
   },
   { timestamps: true }
 );

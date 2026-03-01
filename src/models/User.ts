@@ -9,6 +9,17 @@ export interface IUser extends Document {
   password: string;
   role: 'customer' | 'shopkeeper';
   joinedAt: Date;
+  address?: {
+    street: string;
+    area: string;
+    city: string;
+    state: string;
+    pincode: string;
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -21,6 +32,17 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, required: true },
     role: { type: String, enum: ['customer', 'shopkeeper'], default: 'customer' },
     joinedAt: { type: Date, default: Date.now },
+    address: {
+      street: { type: String, default: '' },
+      area: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      pincode: { type: String, default: '' },
+      location: {
+        lat: { type: Number },
+        lng: { type: Number },
+      },
+    },
   },
   {
     timestamps: true,

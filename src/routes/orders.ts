@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { uid, name, phone, items, subtotal, delivery, total, paymentMethod } = req.body;
+    const { uid, name, phone, items, subtotal, delivery, total, paymentMethod, deliveryAddress } = req.body;
     
     const orderId = 'SKE' + Date.now().toString().slice(-7);
     const now = new Date();
@@ -25,6 +25,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       status: 'pending',
       time: now,
       timeStr,
+      deliveryAddress,
     });
 
     await order.save();

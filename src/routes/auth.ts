@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
 import User from '../models/User';
+import Order from '../models/Order';
 
 const router = Router();
+
+const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address';
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -167,10 +170,59 @@ router.post('/admin-login', async (req: Request, res: Response): Promise<void> =
 
 router.get('/users', async (req: Request, res: Response): Promise<void> => {
   try {
-    const users = await User.find({ role: 'customer' }).select('uid name phone address');
+    const users = await User.find({ role: 'customer' })
+      .select(USER_PUBLIC_FIELDS)
+      .sort({ joinedAt: -1 });
     res.json({ success: true, users });
   } catch (error) {
     console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.put('/profile', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, name, address } = req.body;
+
+    if (!uid) {
+      res.status(400).json({ success: false, message: 'User ID required' });
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+
+    if (typeof name === 'string') {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        res.status(400).json({ success: false, message: 'Name cannot be empty' });
+        return;
+      }
+      updates.name = trimmedName;
+    }
+
+    if (address && typeof address === 'object') {
+      updates.address = address;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ success: false, message: 'No valid profile fields provided' });
+      return;
+    }
+
+    const user = await User.findOneAndUpdate(
+      { uid, role: 'customer' },
+      updates,
+      { new: true }
+    ).select(USER_PUBLIC_FIELDS);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -186,7 +238,7 @@ router.put('/address', async (req: Request, res: Response): Promise<void> => {
       { uid },
       { address },
       { new: true }
-    );
+    ).select(USER_PUBLIC_FIELDS);
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
@@ -194,6 +246,29 @@ router.put('/address', async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, user });
   } catch (error) {
     console.error('Update address error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.delete('/users/:uid', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid } = req.params;
+    if (!uid) {
+      res.status(400).json({ success: false, message: 'User ID required' });
+      return;
+    }
+
+    const user = await User.findOneAndDelete({ uid, role: 'customer' });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    await Order.deleteMany({ uid });
+
+    res.json({ success: true, message: 'User removed from platform' });
+  } catch (error) {
+    console.error('Delete user error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

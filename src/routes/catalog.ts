@@ -15,7 +15,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, price, mrp, description, image, unit, inStock, isNew, tag } = req.body;
+    const { name, category, price, mrp, description, weight, image, unit, inStock, isNew, tag } = req.body;
 
     const product = new Product({
       name,
@@ -23,6 +23,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       price,
       mrp,
       description,
+      weight,
       image: image || 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=300',
       unit: unit || 'piece',
       inStock: inStock !== false,

@@ -16,7 +16,7 @@ export interface IOrder extends Document {
   delivery: number;
   total: number;
   paymentMethod: string;
-  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'dispatched' | 'delivered' | 'cancelled';
   time: Date;
   timeStr: string;
   deliveryAddress?: {
@@ -49,7 +49,7 @@ const OrderSchema = new Schema<IOrder>(
     delivery: { type: Number, required: true },
     total: { type: Number, required: true },
     paymentMethod: { type: String, default: 'cod' },
-    status: { type: String, enum: ['pending', 'confirmed', 'delivered', 'cancelled'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'confirmed', 'dispatched', 'delivered', 'cancelled'], default: 'pending' },
     time: { type: Date, default: Date.now },
     timeStr: { type: String, required: true },
     deliveryAddress: {

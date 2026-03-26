@@ -15,11 +15,13 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, price, mrp, description, weight, image, unit, inStock, isNew, tag } = req.body;
+    const { name, category, subCategory, brand, price, mrp, description, weight, image, unit, inStock, isNew, tag } = req.body;
 
     const product = new Product({
       name,
       category,
+      subCategory: subCategory || '',
+      brand: brand || '',
       price,
       mrp,
       description,

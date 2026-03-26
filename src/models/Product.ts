@@ -3,6 +3,8 @@ import mongoose, { Schema, Model } from 'mongoose';
 export interface IProduct {
   name: string;
   category: string;
+  subCategory?: string;
+  brand?: string;
   price: number;
   mrp: number;
   description?: string;
@@ -19,6 +21,8 @@ const ProductSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true },
     category: { type: String, required: true },
+    subCategory: { type: String, default: '' },
+    brand: { type: String, default: '' },
     price: { type: Number, required: true },
     mrp: { type: Number, required: true },
     description: { type: String },

@@ -4,7 +4,7 @@ import Order from '../models/Order';
 
 const router = Router();
 
-const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address';
+const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address addresses';
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -246,6 +246,63 @@ router.put('/address', async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, user });
   } catch (error) {
     console.error('Update address error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Add or replace an address in the addresses array
+router.put('/addresses', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, address, index } = req.body;
+    if (!uid || !address) {
+      res.status(400).json({ success: false, message: 'User ID and address required' });
+      return;
+    }
+    const user = await User.findOne({ uid });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (!user.addresses) user.addresses = [];
+    if (typeof index === 'number' && index >= 0 && index < user.addresses.length) {
+      // Replace existing address at index
+      user.addresses[index] = address;
+    } else {
+      // Add new address
+      user.addresses.push(address);
+    }
+    // Also update primary address to the latest one if none set
+    if (!user.address) user.address = address;
+    await user.save();
+    const updated = await User.findOne({ uid }).select(USER_PUBLIC_FIELDS);
+    res.json({ success: true, user: updated });
+  } catch (error) {
+    console.error('Update addresses error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Delete an address from addresses array
+router.delete('/addresses', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, index } = req.body;
+    if (uid === undefined || index === undefined) {
+      res.status(400).json({ success: false, message: 'uid and index required' });
+      return;
+    }
+    const user = await User.findOne({ uid });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (user.addresses && index >= 0 && index < user.addresses.length) {
+      user.addresses.splice(index, 1);
+      await user.save();
+    }
+    const updated = await User.findOne({ uid }).select(USER_PUBLIC_FIELDS);
+    res.json({ success: true, user: updated });
+  } catch (error) {
+    console.error('Delete address error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

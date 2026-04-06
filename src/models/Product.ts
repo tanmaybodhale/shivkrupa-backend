@@ -15,6 +15,7 @@ export interface IProduct {
   isNew?: boolean;
   tag?: string;
   quantity?: number;
+  hidden?: boolean;
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -33,6 +34,7 @@ const ProductSchema = new Schema<IProduct>(
     isNew: { type: Boolean, default: false },
     tag: { type: String, default: '' },
     quantity: { type: Number },
+    hidden: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

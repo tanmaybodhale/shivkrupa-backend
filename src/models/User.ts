@@ -24,6 +24,7 @@ export interface IUser extends Document {
   joinedAt: Date;
   address?: IAddress;
   addresses?: IAddress[];
+  wishlist?: string[];
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -51,6 +52,7 @@ const UserSchema = new Schema<IUser>(
     joinedAt: { type: Date, default: Date.now },
     address: AddressSchema,
     addresses: [AddressSchema],
+    wishlist: [{ type: String }],
   },
   {
     timestamps: true,

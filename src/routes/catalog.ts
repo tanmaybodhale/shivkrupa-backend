@@ -3,12 +3,31 @@ import Product from '../models/Product';
 
 const router = Router();
 
+// GET all — customers only see non-hidden products
+// Admin can pass ?admin=true to see all
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const isAdmin = req.query.admin === 'true';
+    const filter = isAdmin ? {} : { hidden: { $ne: true } };
+    const products = await Product.find(filter).sort({ createdAt: -1 });
     res.json({ success: true, products });
   } catch (error) {
     console.error('Get products error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET single product by ID (for /product/[id] page — always returns regardless of hidden)
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+    res.json({ success: true, product });
+  } catch (error) {
+    console.error('Get single product error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -31,6 +50,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       inStock: inStock !== false,
       isNew: isNew || false,
       tag: tag || '',
+      hidden: false,
     });
 
     await product.save();
@@ -55,6 +75,29 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, product });
   } catch (error) {
     console.error('Update product error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// PATCH /:id/hidden — toggle hidden flag (admin only in practice)
+router.patch('/:id/hidden', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { hidden } = req.body as { hidden: boolean };
+
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { hidden: !!hidden },
+      { new: true }
+    );
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    res.json({ success: true, product });
+  } catch (error) {
+    console.error('Toggle hidden error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

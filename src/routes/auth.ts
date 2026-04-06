@@ -4,7 +4,7 @@ import Order from '../models/Order';
 
 const router = Router();
 
-const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address addresses';
+const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address addresses wishlist';
 
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -61,6 +61,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
         email: newUser.email,
         role: newUser.role,
         address: newUser.address,
+        wishlist: newUser.wishlist || [],
       },
     });
   } catch (error) {
@@ -127,6 +128,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         email: user.email,
         role: user.role,
         address: user.address,
+        wishlist: user.wishlist || [],
       },
     });
   } catch (error) {
@@ -326,6 +328,51 @@ router.delete('/users/:uid', async (req: Request, res: Response): Promise<void> 
     res.json({ success: true, message: 'User removed from platform' });
   } catch (error) {
     console.error('Delete user error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Toggle wishlist — add if not present, remove if already in list
+router.post('/wishlist/toggle', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, productId } = req.body;
+    if (!uid || !productId) {
+      res.status(400).json({ success: false, message: 'uid and productId required' });
+      return;
+    }
+    const user = await User.findOne({ uid });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (!user.wishlist) user.wishlist = [];
+    const idx = user.wishlist.indexOf(productId);
+    if (idx === -1) {
+      user.wishlist.push(productId);
+    } else {
+      user.wishlist.splice(idx, 1);
+    }
+    await user.save();
+    const updated = await User.findOne({ uid }).select(USER_PUBLIC_FIELDS);
+    res.json({ success: true, wishlist: updated?.wishlist || [], added: idx === -1 });
+  } catch (error) {
+    console.error('Wishlist toggle error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET wishlist product IDs for a user
+router.get('/wishlist/:uid', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid } = req.params;
+    const user = await User.findOne({ uid }).select('wishlist');
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    res.json({ success: true, wishlist: user.wishlist || [] });
+  } catch (error) {
+    console.error('Get wishlist error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

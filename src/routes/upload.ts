@@ -20,6 +20,20 @@ const upload = multer({
     },
 });
 
+// Multi-file upload (up to 10 images)
+const uploadMultiple = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Invalid file type: ${file.mimetype}.`));
+        }
+    },
+});
+
 /**
  * POST /api/upload
  * Accepts a single image file (field name: "image")
@@ -88,6 +102,45 @@ router.post('/', (req: Request, res: Response): void => {
                 success: false,
                 message: error.message || 'Image upload failed. Please try again.',
             });
+        }
+    });
+});
+
+/**
+ * POST /api/upload/multiple
+ * Accepts up to 10 image files (field name: "images")
+ * Uploads all to Cloudinary → returns array of secure URLs
+ */
+router.post('/multiple', (req: Request, res: Response): void => {
+    uploadMultiple.array('images', 10)(req, res, async (err: any) => {
+        if (err) {
+            res.status(400).json({ success: false, message: err.message || 'Error uploading files' });
+            return;
+        }
+        try {
+            if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+                res.status(500).json({ success: false, message: 'Cloudinary is not configured.' });
+                return;
+            }
+            const files = req.files as Express.Multer.File[];
+            if (!files || files.length === 0) {
+                res.status(400).json({ success: false, message: 'No image files provided.' });
+                return;
+            }
+            const uploadPromises = files.map(file =>
+                new Promise<any>((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        { folder: 'shivkrupa-products', resource_type: 'image', transformation: [{ width: 600, height: 600, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' }] },
+                        (error, result) => { if (error) reject(error); else resolve(result); }
+                    );
+                    stream.end(file.buffer);
+                })
+            );
+            const results = await Promise.all(uploadPromises);
+            res.json({ success: true, urls: results.map(r => r.secure_url), public_ids: results.map(r => r.public_id) });
+        } catch (error: any) {
+            console.error('Multi-image upload error:', error);
+            res.status(500).json({ success: false, message: error.message || 'Upload failed.' });
         }
     });
 });

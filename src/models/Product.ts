@@ -10,6 +10,7 @@ export interface IProduct {
   description?: string;
   weight?: string;
   image: string;
+  images?: string[];
   unit: string;
   inStock: boolean;
   isNew?: boolean;
@@ -29,6 +30,7 @@ const ProductSchema = new Schema<IProduct>(
     description: { type: String },
     weight: { type: String },
     image: { type: String, default: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=300' },
+    images: { type: [String], default: [] },
     unit: { type: String, default: 'piece' },
     inStock: { type: Boolean, default: true },
     isNew: { type: Boolean, default: false },

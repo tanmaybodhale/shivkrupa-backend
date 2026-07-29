@@ -10,6 +10,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     const isAdmin = req.query.admin === 'true';
     const filter = isAdmin ? {} : { hidden: { $ne: true } };
     const products = await Product.find(filter).sort({ createdAt: -1 });
+    // Cache for 30s on client, 60s on shared caches (CDN/proxy)
+    if (!isAdmin) res.set('Cache-Control', 'public, max-age=30, s-maxage=60');
     res.json({ success: true, products });
   } catch (error) {
     console.error('Get products error:', error);
@@ -34,7 +36,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, category, subCategory, brand, price, mrp, description, weight, image, unit, inStock, isNew, tag } = req.body;
+    const { name, category, subCategory, brand, price, mrp, description, weight, image, images, unit, inStock, isNew, tag } = req.body;
 
     const product = new Product({
       name,
@@ -46,6 +48,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       description,
       weight,
       image: image || 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=300',
+      images: images || [],
       unit: unit || 'piece',
       inStock: inStock !== false,
       isNew: isNew || false,

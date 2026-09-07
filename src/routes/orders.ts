@@ -30,6 +30,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     });
 
     await order.save();
+    await sendOrderNotification(order);
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
@@ -93,7 +94,7 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     
     order.status = status;
     await order.save();
-    await sendOrderNotification(order);
+    
     
     res.json({ success: true, order });
   } catch (error) {

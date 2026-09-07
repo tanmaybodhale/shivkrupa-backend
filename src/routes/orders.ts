@@ -2,17 +2,14 @@ import { Router, Request, Response } from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import { sendOrderNotification } from '../utils/sendOrderNotification';
-
 const router = Router();
-
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid, name, phone, items, subtotal, delivery, total, paymentMethod, deliveryAddress } = req.body;
     
     const orderId = 'SKE' + Date.now().toString().slice(-7);
     const now = new Date();
-    const timeStr = now.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-
+    const timeStr = now.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' });
     const order = new Order({
       orderId,
       uid,
@@ -28,10 +25,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       timeStr,
       deliveryAddress,
     });
-
     await order.save();
     await sendOrderNotification(order);
-
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (product && product.quantity !== undefined && product.quantity !== null) {
@@ -39,14 +34,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: newQty > 0 });
       }
     }
-
     res.status(201).json({ success: true, order });
   } catch (error) {
     console.error('Create order error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 router.get('/all', async (req: Request, res: Response): Promise<void> => {
   try {
     const orders = await Order.find().sort({ time: -1 });
@@ -56,7 +49,6 @@ router.get('/all', async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 router.get('/:uid', async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid } = req.params;
@@ -67,7 +59,6 @@ router.get('/:uid', async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 router.put('/:orderId/status', async (req: Request, res: Response): Promise<void> => {
   try {
     const { orderId } = req.params;
@@ -79,7 +70,6 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
       res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
-
     const previousStatus = order.status;
     
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
@@ -95,12 +85,10 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     order.status = status;
     await order.save();
     
-    
     res.json({ success: true, order });
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 export default router;

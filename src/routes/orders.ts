@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
+import { sendOrderNotification } from '../utils/sendOrderNotification';
 
 const router = Router();
 
@@ -92,6 +93,7 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     
     order.status = status;
     await order.save();
+    await sendOrderNotification(order);
     
     res.json({ success: true, order });
   } catch (error) {

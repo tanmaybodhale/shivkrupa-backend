@@ -9,16 +9,21 @@ if (!admin.apps.length) {
   });
 }
 
-const DEVICE_TOKEN = process.env.ORDER_NOTIFIER_DEVICE_TOKEN || '';
+// Comma-separated list of every staff phone's device token, e.g.
+// "AAAA...,BBBB...,CCCC..."  (set this in Render's Environment tab)
+const DEVICE_TOKENS = (process.env.ORDER_NOTIFIER_DEVICE_TOKENS || '')
+  .split(',')
+  .map((t) => t.trim())
+  .filter((t) => t.length > 0);
 
 export async function sendOrderNotification(order: any): Promise<void> {
-  if (!DEVICE_TOKEN) {
-    console.error('ORDER_NOTIFIER_DEVICE_TOKEN is not set — skipping notification.');
+  if (DEVICE_TOKENS.length === 0) {
+    console.error('No device tokens set in ORDER_NOTIFIER_DEVICE_TOKENS — skipping notification.');
     return;
   }
 
   const message = {
-    token: DEVICE_TOKEN,
+    tokens: DEVICE_TOKENS,
     data: {
       title: 'New Order Received! 🛒',
       body: `Order #${order.orderId} from ${order.name || 'a customer'} — ₹${order.total || ''}`,
@@ -29,9 +34,17 @@ export async function sendOrderNotification(order: any): Promise<void> {
   };
 
   try {
-    const response = await admin.messaging().send(message);
-    console.log('Order notification sent:', response);
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`Notifications sent: ${response.successCount} succeeded, ${response.failureCount} failed`);
+
+    // Log which specific tokens failed and why (helpful if a phone was
+    // reinstalled and its old token is now invalid/expired)
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        console.error(`Failed for token ${DEVICE_TOKENS[idx]}:`, resp.error?.message);
+      }
+    });
   } catch (err) {
-    console.error('Failed to send order notification:', err);
+    console.error('Failed to send order notifications:', err);
   }
 }

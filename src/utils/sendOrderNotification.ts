@@ -16,7 +16,7 @@ const DEVICE_TOKENS = (process.env.ORDER_NOTIFIER_DEVICE_TOKENS || '')
   .map((t) => t.trim())
   .filter((t) => t.length > 0);
 
-export async function sendOrderNotification(order: any): Promise<void> {
+async function sendToAllDevices(title: string, body: string) {
   if (DEVICE_TOKENS.length === 0) {
     console.error('No device tokens set in ORDER_NOTIFIER_DEVICE_TOKENS — skipping notification.');
     return;
@@ -24,10 +24,7 @@ export async function sendOrderNotification(order: any): Promise<void> {
 
   const message = {
     tokens: DEVICE_TOKENS,
-    data: {
-      title: 'New Order Received! 🛒',
-      body: `Order #${order.orderId} from ${order.name || 'a customer'} — ₹${order.total || ''}`,
-    },
+    data: { title, body },
     android: {
       priority: 'high' as const,
     },
@@ -36,15 +33,26 @@ export async function sendOrderNotification(order: any): Promise<void> {
   try {
     const response = await admin.messaging().sendEachForMulticast(message);
     console.log(`Notifications sent: ${response.successCount} succeeded, ${response.failureCount} failed`);
-
-    // Log which specific tokens failed and why (helpful if a phone was
-    // reinstalled and its old token is now invalid/expired)
     response.responses.forEach((resp, idx) => {
       if (!resp.success) {
         console.error(`Failed for token ${DEVICE_TOKENS[idx]}:`, resp.error?.message);
       }
     });
   } catch (err) {
-    console.error('Failed to send order notifications:', err);
+    console.error('Failed to send notification:', err);
   }
+}
+
+export async function sendOrderNotification(order: any): Promise<void> {
+  await sendToAllDevices(
+    'New Order Received! 🛒',
+    `Order #${order.orderId} from ${order.name || 'a customer'} — ₹${order.total || ''}`
+  );
+}
+
+export async function sendCancellationNotification(order: any): Promise<void> {
+  await sendToAllDevices(
+    'Order Cancelled ❌',
+    `Order #${order.orderId} from ${order.name || 'a customer'} was cancelled by the customer.`
+  );
 }

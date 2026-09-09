@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
-import { sendOrderNotification } from '../utils/sendOrderNotification';
+import { sendOrderNotification, sendCancellationNotification } from '../utils/sendOrderNotification';
 const router = Router();
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -73,6 +73,7 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     const previousStatus = order.status;
     
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
+      await sendCancellationNotification(order);
       for (const item of order.items) {
         const product = await Product.findById(item.productId);
         if (product && product.quantity !== undefined && product.quantity !== null) {

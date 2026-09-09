@@ -71,6 +71,11 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
       return;
     }
     const previousStatus = order.status;
+
+    if (previousStatus === 'cancelled') {
+      res.status(400).json({ success: false, message: 'This order was already cancelled and cannot be updated.' });
+      return;
+    }
     
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
       await sendCancellationNotification(order);

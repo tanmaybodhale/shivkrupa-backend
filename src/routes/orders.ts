@@ -77,7 +77,7 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
       return;
     }
     
-    if (status === 'cancelled' && previousStatus !== 'cancelled') {
+    if (status === 'cancelled' ) {
       await sendCancellationNotification(order);
       for (const item of order.items) {
         const product = await Product.findById(item.productId);

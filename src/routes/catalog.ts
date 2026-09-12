@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import Product from '../models/Product';
+import Order from '../models/Order';
 
 const router = Router();
 
@@ -30,6 +31,75 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, product });
   } catch (error) {
     console.error('Get single product error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET related/suggested products for a given product ID
+// Ranks by co-purchase frequency from past orders, falls back to same category
+router.get('/:id/related', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const limit = 8;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    // 1) Find all orders that included this product
+    const ordersWithProduct = await Order.find({ 'items.productId': id }).select('items');
+
+    // 2) Count co-occurrence of every other productId in those same orders
+    const coPurchaseCounts: Record<string, number> = {};
+    for (const order of ordersWithProduct) {
+      for (const item of order.items) {
+        if (item.productId === id) continue;
+        coPurchaseCounts[item.productId] = (coPurchaseCounts[item.productId] || 0) + 1;
+      }
+    }
+
+    // 3) Sort co-purchased product IDs by frequency, most-bought-together first
+    const rankedCoPurchaseIds = Object.entries(coPurchaseCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([productId]) => productId);
+
+    // Fetch those products (only if still in-stock and not hidden)
+    const coPurchaseProducts = rankedCoPurchaseIds.length > 0
+      ? await Product.find({
+          _id: { $in: rankedCoPurchaseIds },
+          hidden: { $ne: true },
+          inStock: { $ne: false },
+        })
+      : [];
+
+    // Preserve the ranked order (Mongo doesn't guarantee $in order)
+    const coPurchaseMap = new Map(coPurchaseProducts.map(p => [String(p._id), p]));
+    const rankedProducts = rankedCoPurchaseIds
+      .map(pid => coPurchaseMap.get(pid))
+      .filter(Boolean) as typeof coPurchaseProducts;
+
+    let related = rankedProducts.slice(0, limit);
+
+    // 4) Fill remaining slots with same-category products, if needed
+    if (related.length < limit) {
+      const excludeIds = [id, ...related.map(p => String(p._id))];
+      const categoryFallback = await Product.find({
+        category: product.category,
+        _id: { $nin: excludeIds },
+        hidden: { $ne: true },
+        inStock: { $ne: false },
+      })
+        .sort({ createdAt: -1 })
+        .limit(limit - related.length);
+
+      related = [...related, ...categoryFallback];
+    }
+
+    res.json({ success: true, products: related });
+  } catch (error) {
+    console.error('Get related products error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

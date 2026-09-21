@@ -9,30 +9,23 @@ const USER_PUBLIC_FIELDS = 'uid name phone email role joinedAt address addresses
 router.post('/signup', async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, phone, email, password, role, address } = req.body;
-    
-    console.log('Signup request received:', { name, phone, email, role, hasAddress: !!address });
-    console.log('Address data:', address);
 
     if (!name || !phone || !password) {
-      console.log('Missing required fields');
       res.status(400).json({ success: false, message: 'Please fill all required fields' });
       return;
     }
 
     if (!/^\d{10}$/.test(phone)) {
-      console.log('Invalid phone:', phone);
       res.status(400).json({ success: false, message: 'Enter a valid 10-digit phone number' });
       return;
     }
 
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
-      console.log('User already exists:', phone);
-      res.status(400).json({ success: false, message: 'Phone already registered' });
+      res.status(409).json({ success: false, message: 'This number is already registered. Please sign in instead.' });
       return;
     }
 
-    console.log('Creating new user...');
     const uid = 'SKE' + Date.now().toString().slice(-6);
     const userRole = role || 'customer';
 
@@ -47,9 +40,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       address: address || {},
     });
 
-    console.log('Saving user to database...');
     await newUser.save();
-    console.log('User saved successfully:', newUser.uid);
 
     res.status(201).json({
       success: true,
@@ -75,7 +66,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     const { id, password, role } = req.body;
 
     if (!id || !password || !role) {
-      res.status(400).json({ success: false, message: 'Please provide id, password and role' });
+      res.status(400).json({ success: false, message: 'Please provide phone number, password and role' });
       return;
     }
 
@@ -102,19 +93,22 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Customer login
-    const user = await User.findOne({
-      $or: [{ phone: id }, { email: id }],
-    });
+    // Customer login — phone number only
+    if (!/^\d{10}$/.test(id)) {
+      res.status(400).json({ success: false, message: 'Enter a valid 10-digit phone number' });
+      return;
+    }
+
+    const user = await User.findOne({ phone: id });
 
     if (!user) {
-      res.status(401).json({ success: false, message: 'User not found' });
+      res.status(404).json({ success: false, message: 'This number is not registered. Please sign up first.' });
       return;
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      res.status(401).json({ success: false, message: 'Wrong password' });
+      res.status(401).json({ success: false, message: 'Incorrect password' });
       return;
     }
 

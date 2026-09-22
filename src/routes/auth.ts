@@ -73,7 +73,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     // Shopkeeper login (hardcoded)
     if (role === 'shopkeeper') {
       const shopkeeperUsername = process.env.SHOPKEEPER_USERNAME || 'admin';
-      const shopkeeperPassword = process.env.SHOPKEEPER_PASSWORD || 'admin123';
+      const shopkeeperPassword = process.env.SHOPKEEPER_PASSWORD || 'admin1231';
 
       if ((id === shopkeeperUsername || id === '9975636622') && password === shopkeeperPassword) {
         res.json({
@@ -141,7 +141,7 @@ router.post('/admin-login', async (req: Request, res: Response): Promise<void> =
     }
 
     const shopkeeperUsername = process.env.SHOPKEEPER_USERNAME || 'admin';
-    const shopkeeperPassword = process.env.SHOPKEEPER_PASSWORD || 'admin123';
+    const shopkeeperPassword = process.env.SHOPKEEPER_PASSWORD || 'admin1231';
 
     if (username === shopkeeperUsername && password === shopkeeperPassword) {
       res.json({

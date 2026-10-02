@@ -11,6 +11,15 @@ export interface IOrder extends Document {
     price: number;
     qty: number;
     image?: string;
+    printDetails?: {
+      fileUrl: string;
+      fileName: string;
+      fileType: string; // mime type
+      resourceType: string; // "image" or "raw"
+      orientation: 'portrait' | 'landscape';
+      pageSize: string; // e.g. "A4", "A3", "Letter", "Legal"
+      colorMode: 'bw' | 'color';
+    };
   }[];
   subtotal: number;
   delivery: number;
@@ -32,6 +41,16 @@ export interface IOrder extends Document {
   };
 }
 
+const PrintDetailsSchema = new Schema({
+  fileUrl: { type: String, required: true },
+  fileName: { type: String, required: true },
+  fileType: { type: String, required: true },
+  resourceType: { type: String, required: true },
+  orientation: { type: String, enum: ['portrait', 'landscape'], default: 'portrait' },
+  pageSize: { type: String, default: 'A4' },
+  colorMode: { type: String, enum: ['bw', 'color'], default: 'bw' },
+}, { _id: false });
+
 const OrderSchema = new Schema<IOrder>(
   {
     orderId: { type: String, required: true, unique: true },
@@ -44,6 +63,7 @@ const OrderSchema = new Schema<IOrder>(
       price: { type: Number, required: true },
       qty: { type: Number, required: true },
       image: { type: String },
+      printDetails: PrintDetailsSchema,
     }],
     subtotal: { type: Number, required: true },
     delivery: { type: Number, required: true },

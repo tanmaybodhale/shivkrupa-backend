@@ -28,10 +28,25 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     await order.save();
     await sendOrderNotification(order);
     for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (product && product.quantity !== undefined && product.quantity !== null) {
-        const newQty = Math.max(0, product.quantity - item.qty);
-        await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: newQty > 0 });
+      // Print/Xerox line items use a synthetic productId like
+      // "<baseId>-print-<cloudinaryPublicId>" rather than a real catalog
+      // product ID, since each uploaded file is its own unique cart line.
+      // There's no real stock to adjust for these, and passing a malformed
+      // ID into Product.findById() throws a CastError — which, uncaught,
+      // used to crash this whole request AFTER the order had already been
+      // saved. That meant the order existed in the database (visible to
+      // the admin) but the customer's app received a failed response and
+      // never cleared the cart or showed the bill. Skipping/guarding here
+      // fixes that for good, for print items and for any other bad ID.
+      if (item.printDetails) continue;
+      try {
+        const product = await Product.findById(item.productId);
+        if (product && product.quantity !== undefined && product.quantity !== null) {
+          const newQty = Math.max(0, product.quantity - item.qty);
+          await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: newQty > 0 });
+        }
+      } catch (err) {
+        console.error(`Stock update skipped for item ${item.productId}:`, err);
       }
     }
     res.status(201).json({ success: true, order });
@@ -80,10 +95,17 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
     if (status === 'cancelled' ) {
       await sendCancellationNotification(order);
       for (const item of order.items) {
-        const product = await Product.findById(item.productId);
-        if (product && product.quantity !== undefined && product.quantity !== null) {
-          const newQty = product.quantity + item.qty;
-          await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: true });
+        // Same reasoning as above — skip the synthetic print-item IDs so a
+        // cancellation can never crash on a bad ObjectId either.
+        if (item.printDetails) continue;
+        try {
+          const product = await Product.findById(item.productId);
+          if (product && product.quantity !== undefined && product.quantity !== null) {
+            const newQty = product.quantity + item.qty;
+            await Product.findByIdAndUpdate(item.productId, { quantity: newQty, inStock: true });
+          }
+        } catch (err) {
+          console.error(`Stock restore skipped for item ${item.productId}:`, err);
         }
       }
     }

@@ -7,6 +7,9 @@ import catalogRoutes from './routes/catalog';
 import ordersRoutes from './routes/orders';
 import uploadRoutes from './routes/upload';
 import servicesRoutes from './routes/services';
+import bannersRoutes from './routes/banners';
+// ...
+
 
 dotenv.config();
 
@@ -50,6 +53,7 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/services', servicesRoutes);
+app.use('/api/banners', bannersRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: 'Route not found' });

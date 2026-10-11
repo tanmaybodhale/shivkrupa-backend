@@ -3,6 +3,9 @@ import Banner from '../models/Banner';
 
 const router = Router();
 
+// Fields an admin is allowed to change on an existing banner
+const UPDATABLE_FIELDS = ['image', 'mobileImage', 'link', 'title', 'order', 'active'] as const;
+
 // GET / — customers only see active banners, sorted for the slideshow.
 // Admin passes ?admin=true to see everything (including inactive) for management.
 router.get('/', async (req: Request, res: Response): Promise<void> => {
@@ -19,13 +22,14 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { image, link, title, order, active } = req.body;
+    const { image, mobileImage, link, title, order, active } = req.body;
     if (!image) {
       res.status(400).json({ success: false, message: 'Image is required' });
       return;
     }
     const banner = new Banner({
       image,
+      mobileImage: mobileImage || '',
       link: link || '',
       title: title || '',
       order: typeof order === 'number' ? order : 0,
@@ -42,7 +46,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+
+    // Only copy known fields from the request body
+    const updates: Record<string, unknown> = {};
+    for (const key of UPDATABLE_FIELDS) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
     const banner = await Banner.findByIdAndUpdate(id, updates, { new: true });
     if (!banner) {
       res.status(404).json({ success: false, message: 'Banner not found' });

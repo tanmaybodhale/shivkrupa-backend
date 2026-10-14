@@ -11,10 +11,10 @@ export interface IOrder extends Document {
     price: number; // for print items: cost of ONE copy of the whole file at order time
     qty: number;   // for print items: number of copies
     image?: string;
-    // Xerox/print details. Sent by the frontend as `printFile`.
+    // Xerox/print details (AppContext sends them as `printDetails`).
     // pricePerPage is the admin rate AT THE TIME the order was placed (snapshot),
     // so later rate changes in the admin panel never affect old orders/invoices.
-    printFile?: {
+    printDetails?: {
       fileUrl: string;
       fileName: string;
       fileType: string; // mime type
@@ -70,7 +70,7 @@ const OrderSchema = new Schema<IOrder>(
       price: { type: Number, required: true },
       qty: { type: Number, required: true },
       image: { type: String },
-      printFile: PrintFileSchema,
+      printDetails: PrintFileSchema,
     }],
     subtotal: { type: Number, required: true },
     delivery: { type: Number, required: true },

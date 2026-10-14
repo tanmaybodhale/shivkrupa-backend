@@ -38,7 +38,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       // the admin) but the customer's app received a failed response and
       // never cleared the cart or showed the bill. Skipping/guarding here
       // fixes that for good, for print items and for any other bad ID.
-      if (item.printFile) continue;
+      if (item.printDetails) continue;
       try {
         const product = await Product.findById(item.productId);
         if (product && product.quantity !== undefined && product.quantity !== null) {
@@ -97,7 +97,7 @@ router.put('/:orderId/status', async (req: Request, res: Response): Promise<void
       for (const item of order.items) {
         // Same reasoning as above — skip the synthetic print-item IDs so a
         // cancellation can never crash on a bad ObjectId either.
-        if (item.printFile) continue;
+        if (item.printDetails) continue;
         try {
           const product = await Product.findById(item.productId);
           if (product && product.quantity !== undefined && product.quantity !== null) {

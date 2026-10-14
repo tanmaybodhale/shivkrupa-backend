@@ -8,17 +8,22 @@ export interface IOrder extends Document {
   items: {
     productId: string;
     name: string;
-    price: number;
-    qty: number;
+    price: number; // for print items: cost of ONE copy of the whole file at order time
+    qty: number;   // for print items: number of copies
     image?: string;
-    printDetails?: {
+    // Xerox/print details. Sent by the frontend as `printFile`.
+    // pricePerPage is the admin rate AT THE TIME the order was placed (snapshot),
+    // so later rate changes in the admin panel never affect old orders/invoices.
+    printFile?: {
       fileUrl: string;
       fileName: string;
       fileType: string; // mime type
       resourceType: string; // "image" or "raw"
       orientation: 'portrait' | 'landscape';
-      pageSize: string; // e.g. "A4", "A3", "Letter", "Legal"
+      pageSize: string; // e.g. "A4", "A3"
       colorMode: 'bw' | 'color';
+      pages: number;
+      pricePerPage: number;
     };
   }[];
   subtotal: number;
@@ -41,7 +46,7 @@ export interface IOrder extends Document {
   };
 }
 
-const PrintDetailsSchema = new Schema({
+const PrintFileSchema = new Schema({
   fileUrl: { type: String, required: true },
   fileName: { type: String, required: true },
   fileType: { type: String, required: true },
@@ -49,6 +54,8 @@ const PrintDetailsSchema = new Schema({
   orientation: { type: String, enum: ['portrait', 'landscape'], default: 'portrait' },
   pageSize: { type: String, default: 'A4' },
   colorMode: { type: String, enum: ['bw', 'color'], default: 'bw' },
+  pages: { type: Number, default: 1 },
+  pricePerPage: { type: Number, default: 0 },
 }, { _id: false });
 
 const OrderSchema = new Schema<IOrder>(
@@ -63,7 +70,7 @@ const OrderSchema = new Schema<IOrder>(
       price: { type: Number, required: true },
       qty: { type: Number, required: true },
       image: { type: String },
-      printDetails: PrintDetailsSchema,
+      printFile: PrintFileSchema,
     }],
     subtotal: { type: Number, required: true },
     delivery: { type: Number, required: true },

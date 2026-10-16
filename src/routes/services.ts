@@ -35,7 +35,7 @@ router.get('/:key', async (req: Request, res: Response): Promise<void> => {
 // POST — create a new service (admin)
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { key, name, icon, pricing, active } = req.body;
+    const { key, name, icon, pricing, bulkPricing, bulkThreshold, active } = req.body;
     if (!key || !name) {
       res.status(400).json({ success: false, message: 'key and name are required' });
       return;
@@ -48,11 +48,23 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    let threshold = 20;
+    if (bulkThreshold !== undefined) {
+      const t = Number(bulkThreshold);
+      if (!Number.isFinite(t) || t < 0) {
+        res.status(400).json({ success: false, message: 'bulkThreshold must be a number, 0 or more' });
+        return;
+      }
+      threshold = Math.floor(t);
+    }
+
     const service = new Service({
       key: normalizedKey,
       name,
       icon: icon || '🛠️',
       pricing: pricing || {},
+      bulkPricing: bulkPricing || {},
+      bulkThreshold: threshold,
       active: active !== false,
     });
     await service.save();
@@ -63,11 +75,20 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// PUT — update a service by key (pricing, name, icon, active)
+// PUT — update a service by key (pricing, bulkPricing, bulkThreshold, name, icon, active)
 router.put('/:key', async (req: Request, res: Response): Promise<void> => {
   try {
-    const updates = { ...req.body };
+    const updates: Record<string, unknown> = { ...req.body };
     delete updates.key; // key is immutable once created
+
+    if ('bulkThreshold' in updates) {
+      const t = Number(updates.bulkThreshold);
+      if (!Number.isFinite(t) || t < 0) {
+        res.status(400).json({ success: false, message: 'bulkThreshold must be a number, 0 or more' });
+        return;
+      }
+      updates.bulkThreshold = Math.floor(t);
+    }
 
     const service = await Service.findOneAndUpdate(
       { key: req.params.key.toLowerCase() },

@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 export interface IAddress {
   label?: string;
@@ -19,13 +18,11 @@ export interface IUser extends Document {
   name: string;
   phone: string;
   email?: string;
-  password: string;
   role: 'customer' | 'shopkeeper';
   joinedAt: Date;
   address?: IAddress;
   addresses?: IAddress[];
   wishlist?: string[];
-  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const AddressSchema = new Schema<IAddress>({
@@ -47,7 +44,6 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, required: true },
     phone: { type: String, required: true, unique: true },
     email: { type: String, sparse: true },
-    password: { type: String, required: true },
     role: { type: String, enum: ['customer', 'shopkeeper'], default: 'customer' },
     joinedAt: { type: Date, default: Date.now },
     address: AddressSchema,
@@ -58,17 +54,6 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
   }
 );
-
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
-};
 
 const User = (mongoose.models.User as Model<IUser>) || mongoose.model<IUser>('User', UserSchema);
 

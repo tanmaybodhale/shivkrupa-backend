@@ -137,11 +137,15 @@ router.post('/signup-otp', otpLimiter, async (req: Request, res: Response): Prom
   }
 });
 
+// One flow for everyone: verify the phone, log in, and create the account
+// automatically the first time a number is seen (the name is asked once).
 router.post('/login-otp', otpLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
+    const { idToken, name, email } = req.body;
+
     let phone: string | null = null;
     try {
-      phone = await phoneFromIdToken(req.body.idToken);
+      phone = await phoneFromIdToken(idToken);
     } catch {
       phone = null;
     }
@@ -150,10 +154,38 @@ router.post('/login-otp', otpLimiter, async (req: Request, res: Response): Promi
       return;
     }
 
-    const user = await User.findOne({ phone, role: 'customer' });
-    if (!user) {
-      res.status(404).json({ success: false, message: 'This number is not registered. Please sign up first.' });
+    let user: IUser | null = await User.findOne({ phone });
+
+    if (user && user.role !== 'customer') {
+      res.status(403).json({ success: false, message: 'This number cannot sign in here' });
       return;
+    }
+
+    if (!user) {
+      const cleanName = typeof name === 'string' ? name.trim() : '';
+      if (!cleanName) {
+        // New number: the app now asks for a name and calls this route again
+        res.json({ success: false, needsName: true, message: 'Please enter your name to finish setting up your account' });
+        return;
+      }
+      try {
+        user = await User.create({
+          uid: 'SKE' + Date.now().toString().slice(-6),
+          name: cleanName,
+          phone,
+          email: typeof email === 'string' && email.trim() ? email.trim() : undefined,
+          role: 'customer', // never taken from the client
+          joinedAt: new Date(),
+          address: {},
+        });
+      } catch (error: any) {
+        if (error?.code === 11000) {
+          user = await User.findOne({ phone }); // created a moment ago by another request
+        } else {
+          throw error;
+        }
+      }
+      if (!user) throw new Error('Could not create user');
     }
 
     res.json({
